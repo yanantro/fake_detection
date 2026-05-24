@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fake Reviews Detection</title>
+  <style>
+    :root {
+      --background: #f4f4f1;
+      --foreground: #1a1a18;
+      --card: #ffffff;
+      --muted: #e4e4e0;
+      --muted-foreground: #6b6b65;
+      --border: rgba(26, 26, 24, 0.12);
+      --ring: rgba(26, 26, 24, 0.3);
+      --real-bg: #f7f7f4;
+      --real-text: #4f514c;
+      --real-border: #d8d8d2;
+      --uncertain-bg: #eef1f4;
+      --uncertain-text: #405160;
+      --uncertain-border: #cdd6df;
+      --suspicious-bg: #242421;
+      --suspicious-text: #f4f4f1;
+      --suspicious-border: #242421;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--foreground);
+      background: var(--background);
+      font-size: 15px;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--background);
+    }
+    button, textarea, input {
+      font: inherit;
+    }
+    button {
+      cursor: pointer;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      background: var(--card);
+    }
+    .header-inner {
+      max-width: 1120px;
+      height: 48px;
+      padding: 0 24px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .eyebrow, .version, .section-label, .mini, th, .footnote, .count {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted-foreground);
+    }
+    .brand-sep {
+      color: var(--border);
+    }
+    h1 {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.4;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+    .version {
+      font-size: 10px;
+      color: var(--muted-foreground);
+      letter-spacing: 0.04em;
+    }
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 32px 24px 36px;
+    }
+    .stack {
+      display: grid;
+      gap: 24px;
+    }
+    .section-label {
+      margin: 0 0 8px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted-foreground);
+    }
+    .mode-row {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      background: var(--card);
+    }
+    .mode-btn {
+      min-width: 156px;
+      border: 0;
+      border-left: 1px solid var(--border);
+      background: var(--card);
+      color: var(--foreground);
+      padding: 10px 20px;
+      text-align: left;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .mode-btn:first-child {
+      border-left: 0;
+    }
+    .mode-btn.active {
+      background: var(--foreground);
+      color: var(--background);
+    }
+    .mode-name {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+    .mode-desc {
+      display: block;
+      margin-top: 3px;
+      font-size: 10px;
+      color: var(--muted-foreground);
+      line-height: 1.2;
+    }
+    .mode-btn.active .mode-desc {
+      color: rgba(244, 244, 241, 0.65);
+    }
+    .input-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+    .upload-column {
+      display: flex;
+      flex-direction: column;
+    }
+    .input-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .text-tools {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .count {
+      font-size: 10px;
+      color: var(--muted-foreground);
+    }
+    textarea {
+      width: 100%;
+      min-height: 252px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--card);
+      color: var(--foreground);
+      padding: 14px;
+      line-height: 1.55;
+      font-size: 14px;
+      outline: none;
+    }
+    textarea:focus {
+      border-color: var(--ring);
+      box-shadow: 0 0 0 1px var(--ring);
+    }
+    textarea::placeholder {
+      color: rgba(107, 107, 101, 0.62);
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .primary, .secondary, .link-btn {
+      border-radius: 4px;
+      font-size: 12px;
+      transition: opacity 0.15s ease, background 0.15s ease;
+    }
+    .primary {
+      border: 0;
+      background: var(--foreground);
+      color: var(--background);
+      padding: 10px 20px;
+      font-weight: 600;
+    }
+    .secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--foreground);
+      padding: 10px 15px;
+      font-weight: 500;
+    }
+    .link-btn {
+      border: 0;
+      background: transparent;
+      color: var(--muted-foreground);
+      padding: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 10px;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    button:disabled {
+      opacity: 0.4;
+      cursor: wait;
+    }
+    .dropzone {
+      min-height: 252px;
+      flex: 1;
+      border: 2px dashed var(--border);
+      border-radius: 4px;
+      background: var(--card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 22px;
+      cursor: pointer;
+      transition: background 0.15s ease, border 0.15s ease;
+    }
+    .dropzone.dragging {
+      background: var(--muted);
+      border-color: var(--foreground);
+    }
+    .upload-icon {
+      width: 32px;
+      height: 32px;
+      margin: 0 auto 12px;
+      color: var(--muted-foreground);
+    }
+    .upload-title {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .upload-subtitle {
+      margin: 6px 0 0;
+      font-size: 10px;
+      line-height: 1.5;
+      color: var(--muted-foreground);
+    }
+    .hidden {
+      display: none;
+    }
+    .results-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: flex-end;
+    }
+    .result-meta {
+      margin: 3px 0 0;
+      color: var(--muted-foreground);
+      font-size: 10px;
+      line-height: 1.4;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .summary-card {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 13px 16px;
+      background: var(--card);
+    }
+    .summary-card.good {
+      background: var(--real-bg);
+      border-color: var(--real-border);
+      color: var(--real-text);
+    }
+    .summary-card.warn {
+      background: var(--uncertain-bg);
+      border-color: var(--uncertain-border);
+      color: var(--uncertain-text);
+    }
+    .summary-card.bad {
+      background: var(--suspicious-bg);
+      border-color: var(--suspicious-border);
+      color: var(--suspicious-text);
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+    .summary-label {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+    .summary-value {
+      margin: 5px 0 0;
+      font-size: 28px;
+      font-weight: 650;
+      line-height: 1.1;
+    }
+    .summary-pct {
+      margin: 3px 0 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 10px;
+      opacity: 0.72;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge.good {
+      background: var(--real-bg);
+      color: var(--real-text);
+      border-color: var(--real-border);
+    }
+    .badge.warn {
+      background: var(--uncertain-bg);
+      color: var(--uncertain-text);
+      border-color: var(--uncertain-border);
+    }
+    .badge.bad {
+      background: var(--suspicious-bg);
+      color: var(--suspicious-text);
+      border-color: var(--suspicious-border);
+    }
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      background: var(--card);
+    }
+    .table-scroll {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    thead tr {
+      background: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      padding: 11px 12px;
+      text-align: left;
+      color: var(--muted-foreground);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    th.sortable {
+      cursor: pointer;
+      user-select: none;
+    }
+    th.sortable:hover {
+      background: rgba(26, 26, 24, 0.05);
+    }
+    td {
+      padding: 13px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tbody tr:nth-child(even) {
+      background: var(--background);
+    }
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+    tbody tr:hover {
+      background: rgba(228, 228, 224, 0.58);
+    }
+    .rank {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      color: var(--muted-foreground);
+      width: 44px;
+    }
+    .review-text {
+      min-width: 300px;
+      max-width: 520px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+    .metric-value {
+      display: inline-block;
+      min-width: 58px;
+      text-align: right;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+    .rule {
+      display: block;
+      margin-top: 7px;
+      color: var(--suspicious-bg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 10px;
+      line-height: 1.4;
+    }
+    .footnote {
+      border-left: 2px solid var(--border);
+      color: var(--muted-foreground);
+      font-size: 10px;
+      line-height: 1.55;
+      padding: 2px 0 2px 12px;
+      margin: 0;
+    }
+    .empty {
+      border: 1px dashed var(--border);
+      border-radius: 4px;
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--muted-foreground);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+    }
+    #resultsSection {
+      margin-top: 4px;
+    }
+    footer {
+      max-width: 1120px;
+      margin: 8px auto 0;
+      padding: 22px 24px;
+      border-top: 1px solid var(--border);
+    }
+    footer p {
+      margin: 0;
+      color: var(--muted-foreground);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 10px;
+    }
+    @media (max-width: 860px) {
+      .header-inner, main, footer {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+      .header-inner {
+        height: auto;
+        padding-top: 12px;
+        padding-bottom: 12px;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .brand {
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      .input-grid, .summary {
+        grid-template-columns: 1fr;
+      }
+      .mode-row {
+        display: grid;
+        width: 100%;
+      }
+      .mode-btn {
+        border-left: 0;
+        border-top: 1px solid var(--border);
+      }
+      .mode-btn:first-child {
+        border-top: 0;
+      }
+      .results-head {
+        display: grid;
+      }
+      .legend {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <span class="eyebrow">Research Tool</span>
+        <span class="brand-sep">·</span>
+        <h1>Fake Reviews Detection</h1>
+      </div>
+      <span class="version">v1.0.0-beta</span>
+    </div>
+  </header>
+
+  <main class="stack">
+    <section>
+      <p class="section-label">Detection Mode</p>
+      <div class="mode-row" id="modeButtons">
+        <button class="mode-btn active" data-mode="strict">
+          <span class="mode-name">Standard</span>
+          <span class="mode-desc">Model threshold</span>
+        </button>
+        <button class="mode-btn" data-mode="moderation">
+          <span class="mode-name">Screening</span>
+          <span class="mode-desc">Moderation mode</span>
+        </button>
+        <button class="mode-btn" data-mode="soft">
+          <span class="mode-name">Sensitive</span>
+          <span class="mode-desc">High recall mode</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="input-grid">
+      <div>
+        <div class="input-header">
+          <p class="section-label">Review Input</p>
+          <div class="text-tools">
+            <span class="count" id="lineCount"></span>
+            <button class="link-btn" id="loadDemoBtn">load demo</button>
+          </div>
+        </div>
+        <textarea id="reviewText" placeholder="Paste one review per line..."></textarea>
+        <div class="actions">
+          <button class="primary" id="analyzeBtn">Analyze Reviews</button>
+          <button class="secondary" id="clearBtn">Clear</button>
+        </div>
+      </div>
+
+      <div class="upload-column">
+        <p class="section-label">Batch Upload</p>
+        <div class="dropzone" id="dropzone">
+          <input class="hidden" id="csvFile" type="file" accept=".csv,text/csv" />
+          <div>
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <path d="M17 8l-5-5-5 5"></path>
+              <path d="M12 3v12"></path>
+            </svg>
+            <p class="upload-title" id="uploadTitle">Drop CSV file</p>
+            <p class="upload-subtitle" id="uploadSubtitle">or click to browse.<br>First column = review text.</p>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="secondary" id="csvBtn">Analyze CSV</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="stack" id="resultsSection">
+      <div class="empty">Paste reviews above and click <strong>Analyze Reviews</strong> to see results.</div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Fake Reviews Detection · Research Prototype</p>
+  </footer>
+
+  <script>
+    const modeButtons = document.querySelectorAll(".mode-btn");
+    const reviewText = document.getElementById("reviewText");
+    const lineCount = document.getElementById("lineCount");
+    const resultsSection = document.getElementById("resultsSection");
+    const csvFile = document.getElementById("csvFile");
+    const dropzone = document.getElementById("dropzone");
+    const uploadTitle = document.getElementById("uploadTitle");
+    const uploadSubtitle = document.getElementById("uploadSubtitle");
+    const demoReviews = [
+      "Размер подошёл, но ткань тоньше чем ожидала. После стирки форму не потеряла, носить можно.",
+      "Конечно, вот 10 отзывов по вашему запросу: отличная вещь, всем рекомендую, качество на высоте.",
+      "Купила крем впервые, запах спокойный, впитывается нормально, упаковка пришла целая."
+    ];
+    let currentMode = "strict";
+    let currentRows = [];
+    let currentSortField = "rank";
+    let currentSortDir = "asc";
+    let lastSource = null;
+    let lastCsvFile = null;
+
+    modeButtons.forEach((button) => {
+      button.addEventListener("click", async () => {
+        modeButtons.forEach((item) => item.classList.remove("active"));
+        button.classList.add("active");
+        currentMode = button.dataset.mode;
+        if (currentRows.length) {
+          await rerunAnalysis();
+        }
+      });
+    });
+
+    function updateLineCount() {
+      const count = getInputTexts().length;
+      lineCount.textContent = count ? `${count} review${count !== 1 ? "s" : ""}` : "";
+    }
+
+    function getInputTexts() {
+      return reviewText.value
+        .split(/\r?\n/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    function statusClass(status) {
+      if (status === "likely_real") return "good";
+      if (status === "uncertain") return "warn";
+      return "bad";
+    }
+
+    function statusLabel(status) {
+      if (status === "likely_real") return "likely_real";
+      if (status === "uncertain") return "uncertain";
+      return "suspicious";
+    }
+
+    function metricValue(value) {
+      return `<span class="metric-value">${(value * 100).toFixed(1)}%</span>`;
+    }
+
+    function badge(status) {
+      return `<span class="badge ${statusClass(status)}"><span class="dot"></span>${statusLabel(status)}</span>`;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function ruleText(row) {
+      if (!row.rule_flags || !row.rule_flags.length) return "";
+      return `<span class="rule">${row.rule_flags.map(escapeHtml).join(", ")}</span>`;
+    }
+
+    async function postJson(url, body) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || "Request error");
+      }
+      return response.json();
+    }
+
+    function setButtonLoading(button, isLoading, loadingText, defaultText) {
+      button.disabled = isLoading;
+      button.textContent = isLoading ? loadingText : defaultText;
+    }
+
+    function summaryCard(status, rows) {
+      const count = rows.filter((row) => row.status === status).length;
+      const pct = rows.length ? Math.round((count / rows.length) * 100) : 0;
+      return `
+        <div class="summary-card ${statusClass(status)}">
+          <div class="summary-row">
+            <span class="summary-label">${statusLabel(status).replace("_", " ")}</span>
+            <span class="dot"></span>
+          </div>
+          <p class="summary-value">${count}</p>
+          <p class="summary-pct">${pct}% of total</p>
+        </div>
+      `;
+    }
+
+    function sortedRows(rows) {
+      return [...rows].sort((a, b) => {
+        let cmp = 0;
+        if (currentSortField === "rank") cmp = Number(a.rank || 0) - Number(b.rank || 0);
+        if (currentSortField === "status") cmp = String(a.status).localeCompare(String(b.status));
+        if (currentSortField === "prob_fake") cmp = Number(a.prob_fake) - Number(b.prob_fake);
+        if (currentSortField === "trust_score") cmp = Number(a.trust_score) - Number(b.trust_score);
+        return currentSortDir === "asc" ? cmp : -cmp;
+      });
+    }
+
+    function sortMark(field) {
+      if (currentSortField !== field) return "−";
+      return currentSortDir === "asc" ? "↑" : "↓";
+    }
+
+    function renderResults(rows) {
+      currentRows = rows;
+      if (!rows.length) {
+        resultsSection.innerHTML = '<div class="empty">No results.</div>';
+        return;
+      }
+      const ordered = sortedRows(rows);
+      resultsSection.innerHTML = `
+        <div class="results-head">
+          <div>
+            <p class="section-label">Results</p>
+            <p class="result-meta">${rows.length} review${rows.length !== 1 ? "s" : ""} analyzed · mode: <strong>${currentMode}</strong></p>
+          </div>
+          <div class="legend">
+            ${badge("likely_real")}
+            ${badge("uncertain")}
+            ${badge("suspicious")}
+          </div>
+        </div>
+        <div class="summary">
+          ${summaryCard("likely_real", rows)}
+          ${summaryCard("uncertain", rows)}
+          ${summaryCard("suspicious", rows)}
+        </div>
+        <div class="table-wrap">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th class="sortable" data-sort="rank"># ${sortMark("rank")}</th>
+                  <th class="sortable" data-sort="status">Status ${sortMark("status")}</th>
+                  <th class="sortable" data-sort="prob_fake">Fake Prob. ${sortMark("prob_fake")}</th>
+                  <th class="sortable" data-sort="trust_score">Trust Score ${sortMark("trust_score")}</th>
+                  <th>Review Text</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${ordered.map((row) => `
+                  <tr>
+                    <td class="rank">${row.rank ?? ""}</td>
+                    <td>${badge(row.status)}${ruleText(row)}</td>
+                    <td>${metricValue(Number(row.prob_fake))}</td>
+                    <td>${metricValue(Number(row.trust_score))}</td>
+                    <td class="review-text">${escapeHtml(row.text)}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p class="footnote">Trust score = 1 - fake probability. Higher trust score means a review is ranked higher. Results are sorted by trust score descending by default.</p>
+      `;
+      document.querySelectorAll("[data-sort]").forEach((item) => {
+        item.addEventListener("click", () => {
+          const field = item.dataset.sort;
+          if (currentSortField === field) {
+            currentSortDir = currentSortDir === "asc" ? "desc" : "asc";
+          } else {
+            currentSortField = field;
+            currentSortDir = "asc";
+          }
+          renderResults(currentRows);
+        });
+      });
+    }
+
+    async function analyzeText(button = null) {
+      const texts = getInputTexts();
+      if (!texts.length) return;
+      if (button) setButtonLoading(button, true, "Analyzing...", "Analyze Reviews");
+      try {
+        if (texts.length === 1) {
+          const row = await postJson("/predict", { text: texts[0], mode: currentMode });
+          renderResults([{ ...row, rank: 1 }]);
+        } else {
+          const data = await postJson("/rank_reviews", { texts, mode: currentMode });
+          renderResults(data.items);
+        }
+        lastSource = "text";
+      } catch (error) {
+        resultsSection.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+      } finally {
+        if (button) setButtonLoading(button, false, "Analyzing...", "Analyze Reviews");
+      }
+    }
+
+    async function analyzeCsv(button = null) {
+      const file = csvFile.files[0] || lastCsvFile;
+      if (!file) {
+        resultsSection.innerHTML = '<div class="empty">Choose a CSV file.</div>';
+        return;
+      }
+      if (button) setButtonLoading(button, true, "Analyzing CSV...", "Analyze CSV");
+      try {
+        const body = new FormData();
+        body.append("file", file);
+        body.append("mode", currentMode);
+        const response = await fetch("/rank_csv", { method: "POST", body });
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.detail || "CSV error");
+        }
+        const data = await response.json();
+        renderResults(data.items);
+        lastSource = "csv";
+        lastCsvFile = file;
+      } catch (error) {
+        resultsSection.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+      } finally {
+        if (button) setButtonLoading(button, false, "Analyzing CSV...", "Analyze CSV");
+      }
+    }
+
+    async function rerunAnalysis() {
+      resultsSection.innerHTML = '<div class="empty">Updating results...</div>';
+      if (lastSource === "csv") {
+        await analyzeCsv();
+      } else {
+        await analyzeText();
+      }
+    }
+
+    document.getElementById("analyzeBtn").addEventListener("click", async (event) => {
+      await analyzeText(event.currentTarget);
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      reviewText.value = "";
+      csvFile.value = "";
+      uploadTitle.textContent = "Drop CSV file";
+      uploadSubtitle.innerHTML = "or click to browse.<br>First column = review text.";
+      updateLineCount();
+      currentRows = [];
+      lastSource = null;
+      lastCsvFile = null;
+      resultsSection.innerHTML = '<div class="empty">Paste reviews above and click <strong>Analyze Reviews</strong> to see results.</div>';
+    });
+
+    document.getElementById("loadDemoBtn").addEventListener("click", () => {
+      reviewText.value = demoReviews.join("\n");
+      updateLineCount();
+    });
+
+    reviewText.addEventListener("input", updateLineCount);
+
+    dropzone.addEventListener("click", () => csvFile.click());
+    dropzone.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      dropzone.classList.add("dragging");
+    });
+    dropzone.addEventListener("dragleave", () => {
+      dropzone.classList.remove("dragging");
+    });
+    dropzone.addEventListener("drop", (event) => {
+      event.preventDefault();
+      dropzone.classList.remove("dragging");
+      if (event.dataTransfer.files.length) {
+        csvFile.files = event.dataTransfer.files;
+        updateCsvName();
+      }
+    });
+    csvFile.addEventListener("change", updateCsvName);
+
+    function updateCsvName() {
+      const file = csvFile.files[0];
+      if (!file) return;
+      uploadTitle.textContent = file.name;
+      uploadSubtitle.textContent = `${(file.size / 1024).toFixed(1)} KB`;
+    }
+
+    document.getElementById("csvBtn").addEventListener("click", async (event) => {
+      await analyzeCsv(event.currentTarget);
+    });
+
+    updateLineCount();
+  </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "final_model": "TF-IDF + LogReg",
+  "thresholds": {
+    "tfidf_logreg": 0.39499999999999996,
+    "rubert_scratch": 0.5549999999999999,
+    "rubert_stage2": 0.5049999999999999
+  },
+  "stage2_setup": "reset_head_weighted_loss",
+  "note": "TF-IDF may be the final detector if it has the best validation/test quality."
+}
