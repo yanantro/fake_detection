@@ -24,7 +24,6 @@ Web application for detecting potentially fake e-commerce reviews. The system is
 fake_review_detector_github/
 ├── Dockerfile
 ├── README.md
-├── render.yaml
 ├── app/
 │   ├── main.py
 │   ├── model_service.py
@@ -89,15 +88,7 @@ The Docker container installs the CPU-only PyTorch build and runs:
 uvicorn main:app --host 0.0.0.0 --port 7860
 ```
 
-## Deployment
-
-The repository also includes `render.yaml` for deployment on Render. The service command is:
-
-```bash
-cd app && uvicorn main:app --host 0.0.0.0 --port $PORT
-```
-
-For public deployment, the trained model files must also be available in the deployed environment. Large model files should be uploaded using Git LFS or stored externally and copied into `app/models/rubert_ecommerce/` during deployment.
+For public deployment, the trained model files must also be available in the deployed environment. Large model files are stored using Git LFS.
 
 ## API
 
