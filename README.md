@@ -1,3 +1,9 @@
+---
+title: Fake Reviews Detection
+sdk: docker
+app_port: 7860
+---
+
 # Fake Reviews Detection
 
 Web application for detecting potentially fake e-commerce reviews. The system is based on a FastAPI backend and a browser interface for checking one review, a list of reviews, or a CSV file.
@@ -16,25 +22,31 @@ Web application for detecting potentially fake e-commerce reviews. The system is
 
 ```text
 fake_review_detector_github/
-├── main.py
-├── model_service.py
-├── requirements.txt
+├── Dockerfile
+├── README.md
 ├── render.yaml
-├── static/
-│   └── index.html
-└── models/
-    ├── ensemble_params_ecommerce.json
-    └── rubert_ecommerce/
+├── app/
+│   ├── main.py
+│   ├── model_service.py
+│   ├── requirements.txt
+│   ├── static/
+│   │   └── index.html
+│   └── models/
+│       ├── ensemble_params_ecommerce.json
+│       └── rubert_ecommerce/
+├── data/
+└── notebooks/
 ```
 
-The `models/rubert_ecommerce/` directory is required for the RuBERT backend. It contains the trained model files produced in the experimental notebook.
+The `app/models/rubert_ecommerce/` directory is required for the RuBERT backend. It contains the trained model files produced in the experimental notebook.
 
 ## Local Run
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt
+python -m pip install -r app/requirements.txt
+cd app
 python -m uvicorn main:app --reload --port 8000
 ```
 
@@ -49,32 +61,43 @@ http://127.0.0.1:8000/
 For local use, the application expects the model in:
 
 ```text
-models/rubert_ecommerce/
+app/models/rubert_ecommerce/
 ```
 
 and thresholds in:
 
 ```text
-models/ensemble_params_ecommerce.json
+app/models/ensemble_params_ecommerce.json
 ```
 
 If the model is stored outside the repository, set `PROJECT_DIR` to the directory that contains the `models` folder.
 
 ```bash
-export PROJECT_DIR="/path/to/project"
+export PROJECT_DIR="/path/to/project/app"
 export MODEL_BACKEND=rubert
+cd app
 python -m uvicorn main:app --reload --port 8000
+```
+
+## Hugging Face Spaces Deployment
+
+This repository can be deployed as a Docker Space. The Space uses port `7860` and starts the FastAPI application from the `app/` directory.
+
+The Docker container installs the CPU-only PyTorch build and runs:
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port 7860
 ```
 
 ## Deployment
 
-The repository includes `render.yaml` for deployment on Render. The service command is:
+The repository also includes `render.yaml` for deployment on Render. The service command is:
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port $PORT
+cd app && uvicorn main:app --host 0.0.0.0 --port $PORT
 ```
 
-For public deployment, the trained model files must also be available in the deployed environment. Large model files should be uploaded using Git LFS or stored externally and copied into `models/rubert_ecommerce/` during deployment.
+For public deployment, the trained model files must also be available in the deployed environment. Large model files should be uploaded using Git LFS or stored externally and copied into `app/models/rubert_ecommerce/` during deployment.
 
 ## API
 
