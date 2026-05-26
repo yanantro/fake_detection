@@ -1,3 +1,13 @@
+---
+title: Fake Reviews Detection
+emoji: 🔎
+colorFrom: blue
+colorTo: gray
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Fake Reviews Detection
 
 Software project for detecting potentially fake e-commerce reviews using NLP methods.
