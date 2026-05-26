@@ -117,11 +117,11 @@ class ReviewModelService:
     def _base_threshold(self) -> float:
         thresholds = self.params.get("thresholds", {})
         if self.model_backend == "tfidf":
-            return float(thresholds.get("tfidf_logreg", 0.5))
+            return float(thresholds.get("tfidf_logreg", 0.395))
         return float(
             thresholds.get(
                 "rubert_domain_adapted_wb",
-                thresholds.get("rubert_stage2", 0.5),
+                thresholds.get("rubert_stage2", 0.505),
             )
         )
 
