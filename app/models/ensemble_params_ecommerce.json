@@ -1,10 +1,11 @@
 {
-  "final_model": "TF-IDF + LogReg",
+  "final_model": "RuBERT after domain adaptation",
   "thresholds": {
     "tfidf_logreg": 0.39499999999999996,
     "rubert_scratch": 0.5549999999999999,
-    "rubert_stage2": 0.5049999999999999
+    "rubert_stage2": 0.5049999999999999,
+    "rubert_domain_adapted_wb": 0.5049999999999999
   },
   "stage2_setup": "reset_head_weighted_loss",
-  "note": "TF-IDF may be the final detector if it has the best validation/test quality."
+  "note": "RuBERT after domain adaptation is used as the production backend because it achieved the best OOD 50/50 result: F1=0.9126."
 }
